@@ -12,4 +12,10 @@
 		<ProjectReference Include="..\JustHangingAround.Shared\JustHangingAround.Shared.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <Compile Update="Services\ApiClient.cs">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Compile>
+	</ItemGroup>
+
 </Project>

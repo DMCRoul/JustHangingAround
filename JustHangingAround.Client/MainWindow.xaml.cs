@@ -1,17 +1,13 @@
 ﻿using System;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text;
-using System.Text.Json;
 using System.Windows;
-using System.Windows.Controls;
+using JustHangingAround.Client.Services;
 using JustHangingAround.Shared.Models;
 
 namespace JustHangingAround.Client
 {
     public partial class MainWindow : Window
     {
-        private readonly HttpClient _httpClient = new HttpClient();
+        private readonly ApiClient _apiClient = new ApiClient();
 
         public MainWindow()
         {
@@ -26,22 +22,17 @@ namespace JustHangingAround.Client
                 Password = PasswordBox.Password
             };
 
-            var json = JsonSerializer.Serialize(request);
-            var content = new StringContent(json, Encoding.UTF8);
-            content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-
             try
             {
-                var response = await _httpClient.PostAsync("https://localhost:7137/api/Auth/register", content);
-                var responseText = await response.Content.ReadAsStringAsync();
+                var result = await _apiClient.PostAsync("Auth/register", request);
 
-                if (response.IsSuccessStatusCode)
+                if (result.IsSuccess)
                 {
-                    StatusText.Text = $"Успех: {responseText}";
+                    StatusText.Text = $"Успех: {result.ResponseText}";
                 }
                 else
                 {
-                    StatusText.Text = $"Ошибка: {responseText}";
+                    StatusText.Text = $"Ошибка: {result.ResponseText}";
                 }
             }
             catch (Exception ex)
@@ -58,24 +49,21 @@ namespace JustHangingAround.Client
                 Password = PasswordBox.Password
             };
 
-            var json = JsonSerializer.Serialize(request);
-            var content = new StringContent(json, Encoding.UTF8);
-            content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-
             try
             {
-                var response = await _httpClient.PostAsync("https://localhost:7137/api/Auth/login", content);
-                var responseText = await response.Content.ReadAsStringAsync();
+                var result = await _apiClient.PostAsync("Auth/login", request);
 
-                if (response.IsSuccessStatusCode)
+                if (result.IsSuccess)
                 {
                     var homeWindow = new HomeWindow(request.Username);
                     homeWindow.Show();
-                    Close();
+
+                    Application.Current.MainWindow = homeWindow;
+                    Hide();
                 }
                 else
                 {
-                    StatusText.Text = $"Ошибка: {responseText}";
+                    StatusText.Text = $"Ошибка: {result.ResponseText}";
                 }
             }
             catch (Exception ex)
