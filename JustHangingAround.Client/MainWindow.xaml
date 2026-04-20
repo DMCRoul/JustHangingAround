@@ -24,9 +24,18 @@
                          Height="32"
                          Margin="0,5,0,15"/>
 
-            <Button Content="Зарегистрироваться"
-                    Height="36"
-                    Click="Register_Click"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                <Button Content="Зарегистрироваться"
+                        Width="150"
+                        Height="36"
+                        Margin="0,0,10,0"
+                        Click="Register_Click"/>
+
+                <Button Content="Войти"
+                        Width="100"
+                        Height="36"
+                        Click="Login_Click"/>
+            </StackPanel>
 
             <TextBlock x:Name="StatusText"
                        Margin="0,15,0,0"

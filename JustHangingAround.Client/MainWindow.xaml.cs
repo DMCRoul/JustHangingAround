@@ -49,5 +49,39 @@ namespace JustHangingAround.Client
                 StatusText.Text = $"Сбой подключения: {ex.Message}";
             }
         }
+
+        private async void Login_Click(object sender, RoutedEventArgs e)
+        {
+            var request = new LoginRequest
+            {
+                Username = UsernameBox.Text,
+                Password = PasswordBox.Password
+            };
+
+            var json = JsonSerializer.Serialize(request);
+            var content = new StringContent(json, Encoding.UTF8);
+            content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            try
+            {
+                var response = await _httpClient.PostAsync("https://localhost:7137/api/Auth/login", content);
+                var responseText = await response.Content.ReadAsStringAsync();
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var homeWindow = new HomeWindow(request.Username);
+                    homeWindow.Show();
+                    Close();
+                }
+                else
+                {
+                    StatusText.Text = $"Ошибка: {responseText}";
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusText.Text = $"Сбой подключения: {ex.Message}";
+            }
+        }
     }
 }
