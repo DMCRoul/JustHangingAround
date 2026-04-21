@@ -6,6 +6,7 @@ using System.Windows;
 using JustHangingAround.Client.Services;
 using JustHangingAround.Client.ViewModels;
 using JustHangingAround.Shared.Models;
+using Microsoft.AspNetCore.SignalR.Client;
 
 namespace JustHangingAround.Client
 {
@@ -13,6 +14,7 @@ namespace JustHangingAround.Client
     {
         private readonly string _username;
         private readonly ApiClient _apiClient = new ApiClient();
+        private HubConnection _connection;
 
         public ObservableCollection<ChatMessageViewModel> Messages { get; } = new();
 
@@ -30,6 +32,7 @@ namespace JustHangingAround.Client
         private async void HomeWindow_Loaded(object sender, RoutedEventArgs e)
         {
             await LoadMessagesAsync();
+            await InitializeSignalR();
         }
 
         private async Task LoadMessagesAsync()
@@ -70,6 +73,31 @@ namespace JustHangingAround.Client
             }
         }
 
+        private async Task InitializeSignalR()
+        {
+            _connection = new HubConnectionBuilder()
+                .WithUrl("https://localhost:7137/chatHub")
+                .WithAutomaticReconnect()
+                .Build();
+
+            _connection.On<ChatMessage>("ReceiveMessage", message =>
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    Messages.Add(new ChatMessageViewModel
+                    {
+                        Username = message.Username,
+                        Text = message.Text,
+                        IsOwnMessage = message.Username == _username
+                    });
+
+                    ScrollMessagesToBottom();
+                });
+            });
+
+            await _connection.StartAsync();
+        }
+
         private async void Send_Click(object sender, RoutedEventArgs e)
         {
             if (string.IsNullOrWhiteSpace(MessageInput.Text))
@@ -104,6 +132,4 @@ namespace JustHangingAround.Client
             }
         }
     }
-
-
 }

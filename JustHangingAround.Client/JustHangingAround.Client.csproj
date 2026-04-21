@@ -9,6 +9,10 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+	  <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.6" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<ProjectReference Include="..\JustHangingAround.Shared\JustHangingAround.Shared.csproj" />
 	</ItemGroup>
 

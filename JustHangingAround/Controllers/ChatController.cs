@@ -15,6 +15,7 @@ namespace JustHangingAround.Controllers
             _chatRepository = chatRepository;
         }
 
+
         [HttpPost("send")]
         public IActionResult Send([FromBody] SendMessageRequest request)
         {
@@ -24,7 +25,15 @@ namespace JustHangingAround.Controllers
                 return BadRequest("Пустые данные");
             }
 
-            var message = _chatRepository.Add(request.Username, request.Text);
+            var message = new ChatMessage
+            {
+                Username = request.Username,
+                Text = request.Text,
+                CreatedAt = DateTime.Now
+            };
+
+            _chatRepository.Add(message);
+
             return Ok(message);
         }
 

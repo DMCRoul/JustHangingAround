@@ -6,22 +6,19 @@ namespace JustHangingAround.Repositories
     {
         private readonly List<ChatMessage> _messages = new();
 
-        public List<ChatMessage> GetAll()
+        public void Add(ChatMessage message)
         {
-            return _messages.ToList();
-        }
-
-        public ChatMessage Add(string username, string text)
-        {
-            var message = new ChatMessage
+            if (message.CreatedAt == default)
             {
-                Username = username,
-                Text = text,
-                CreatedAt = DateTime.UtcNow
-            };
+                message.CreatedAt = DateTime.Now;
+            }
 
             _messages.Add(message);
-            return message;
+        }
+
+        public List<ChatMessage> GetAll()
+        {
+            return _messages;
         }
     }
 }
