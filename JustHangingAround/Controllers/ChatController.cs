@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using JustHangingAround.Repositories;
 using JustHangingAround.Shared.Models;
 
 namespace JustHangingAround.Controllers
@@ -7,20 +8,31 @@ namespace JustHangingAround.Controllers
     [Route("api/[controller]")]
     public class ChatController : ControllerBase
     {
-        [HttpPost("send")]
-        public IActionResult SendMessage([FromBody] SendMessageRequest request)
+        private readonly IChatRepository _chatRepository;
+
+        public ChatController(IChatRepository chatRepository)
         {
-            if (string.IsNullOrWhiteSpace(request.Username))
+            _chatRepository = chatRepository;
+        }
+
+        [HttpPost("send")]
+        public IActionResult Send([FromBody] SendMessageRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.Username) ||
+                string.IsNullOrWhiteSpace(request.Text))
             {
-                return BadRequest("Не указан пользователь");
+                return BadRequest("Пустые данные");
             }
 
-            if (string.IsNullOrWhiteSpace(request.Text))
-            {
-                return BadRequest("Пустое сообщение");
-            }
+            var message = _chatRepository.Add(request.Username, request.Text);
+            return Ok(message);
+        }
 
-            return Ok($"{request.Username}: {request.Text}");
+        [HttpGet("history")]
+        public IActionResult GetHistory()
+        {
+            var messages = _chatRepository.GetAll();
+            return Ok(messages);
         }
     }
 }
