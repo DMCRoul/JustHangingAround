@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Net.Http;
-using System.Net.Http.Json;
+using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using System.Windows;
 using JustHangingAround.Client.Services;
+using JustHangingAround.Client.ViewModels;
 using JustHangingAround.Shared.Models;
 
 namespace JustHangingAround.Client
@@ -13,16 +13,17 @@ namespace JustHangingAround.Client
     {
         private readonly string _username;
         private readonly ApiClient _apiClient = new ApiClient();
-        private readonly HttpClient _httpClient = new HttpClient
-        {
-            BaseAddress = new Uri("https://localhost:7137/api/")
-        };
+
+        public ObservableCollection<ChatMessageViewModel> Messages { get; } = new();
 
         public HomeWindow(string username)
         {
             InitializeComponent();
+
             _username = username;
             WelcomeText.Text = $"Вы вошли как: {_username}";
+            MessagesList.ItemsSource = Messages;
+
             Loaded += HomeWindow_Loaded;
         }
 
@@ -35,15 +36,20 @@ namespace JustHangingAround.Client
         {
             try
             {
-                var messages = await _httpClient.GetFromJsonAsync<List<ChatMessage>>("Chat/history");
+                var messages = await _apiClient.GetAsync<List<ChatMessage>>("Chat/history");
 
-                MessagesList.Items.Clear();
+                Messages.Clear();
 
                 if (messages != null)
                 {
                     foreach (var message in messages)
                     {
-                        MessagesList.Items.Add($"{message.Username}: {message.Text}");
+                        Messages.Add(new ChatMessageViewModel
+                        {
+                            Username = message.Username,
+                            Text = message.Text,
+                            IsOwnMessage = message.Username == _username
+                        });
                     }
                 }
             }

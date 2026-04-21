@@ -23,5 +23,21 @@ namespace JustHangingAround.Client.Services
 
             return (response.IsSuccessStatusCode, responseText);
         }
+
+        // 👇 НОВЫЙ МЕТОД
+        public async Task<T?> GetAsync<T>(string endpoint)
+        {
+            var response = await _httpClient.GetAsync(BaseUrl + endpoint);
+
+            if (!response.IsSuccessStatusCode)
+                return default;
+
+            var json = await response.Content.ReadAsStringAsync();
+
+            return JsonSerializer.Deserialize<T>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+        }
     }
 }
