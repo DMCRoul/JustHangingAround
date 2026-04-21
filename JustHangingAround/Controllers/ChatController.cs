@@ -1,9 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using JustHangingAround.Repositories;
+﻿using JustHangingAround.Repositories;
 using JustHangingAround.Shared.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace JustHangingAround.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class ChatController : ControllerBase
@@ -18,14 +20,21 @@ namespace JustHangingAround.Controllers
         [HttpPost("send")]
         public async Task<IActionResult> Send([FromBody] SendMessageRequest request)
         {
-            if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Text))
+            if (string.IsNullOrWhiteSpace(request.Text))
             {
-                return BadRequest("Пустые данные");
+                return BadRequest("Пустой текст сообщения");
+            }
+
+            var username = User.Identity?.Name;
+
+            if (string.IsNullOrWhiteSpace(username))
+            {
+                return Unauthorized();
             }
 
             var message = new ChatMessage
             {
-                Username = request.Username,
+                Username = username,
                 Text = request.Text,
                 CreatedAt = DateTime.Now
             };

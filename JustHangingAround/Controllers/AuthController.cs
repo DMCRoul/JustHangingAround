@@ -1,9 +1,13 @@
-﻿using BCrypt.Net;
+﻿using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using BCrypt.Net;
 using JustHangingAround.Data;
 using JustHangingAround.Models;
 using JustHangingAround.Shared.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 
 namespace JustHangingAround.Controllers
 {
@@ -12,10 +16,12 @@ namespace JustHangingAround.Controllers
     public class AuthController : ControllerBase
     {
         private readonly AppDbContext _dbContext;
+        private readonly IConfiguration _configuration;
 
-        public AuthController(AppDbContext dbContext)
+        public AuthController(AppDbContext dbContext, IConfiguration configuration)
         {
             _dbContext = dbContext;
+            _configuration = configuration;
         }
 
         [HttpPost("register")]
@@ -49,7 +55,7 @@ namespace JustHangingAround.Controllers
         }
 
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginRequest request)
+        public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest request)
         {
             if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
             {
@@ -71,10 +77,40 @@ namespace JustHangingAround.Controllers
                 return BadRequest("Неверный пароль");
             }
 
-            return Ok(new
+            var token = GenerateJwtToken(user);
+
+            return Ok(new LoginResponse
             {
-                username = user.Username
+                Username = user.Username,
+                Token = token
             });
+        }
+
+        private string GenerateJwtToken(UserEntity user)
+        {
+            var jwtKey = _configuration["Jwt:Key"]!;
+            var jwtIssuer = _configuration["Jwt:Issuer"]!;
+            var jwtAudience = _configuration["Jwt:Audience"]!;
+            var expireMinutes = int.Parse(_configuration["Jwt:ExpireMinutes"]!);
+
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, user.Username),
+                new Claim(JwtRegisteredClaimNames.Sub, user.Username),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            };
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
+            var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var token = new JwtSecurityToken(
+                issuer: jwtIssuer,
+                audience: jwtAudience,
+                claims: claims,
+                expires: DateTime.UtcNow.AddMinutes(expireMinutes),
+                signingCredentials: credentials);
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
         }
     }
 }
