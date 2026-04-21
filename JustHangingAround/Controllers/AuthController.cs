@@ -1,4 +1,5 @@
-﻿using JustHangingAround.Data;
+﻿using BCrypt.Net;
+using JustHangingAround.Data;
 using JustHangingAround.Models;
 using JustHangingAround.Shared.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -33,10 +34,12 @@ namespace JustHangingAround.Controllers
                 return BadRequest("Пользователь с таким логином уже существует");
             }
 
+            var passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+
             var user = new UserEntity
             {
                 Username = request.Username,
-                PasswordHash = request.Password
+                PasswordHash = passwordHash
             };
 
             _dbContext.Users.Add(user);
@@ -61,12 +64,17 @@ namespace JustHangingAround.Controllers
                 return BadRequest("Пользователь не найден");
             }
 
-            if (user.PasswordHash != request.Password)
+            var isPasswordValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
+
+            if (!isPasswordValid)
             {
                 return BadRequest("Неверный пароль");
             }
 
-            return Ok("Вход выполнен");
+            return Ok(new
+            {
+                username = user.Username
+            });
         }
     }
 }
