@@ -51,11 +51,22 @@ namespace JustHangingAround.Client
                             IsOwnMessage = message.Username == _username
                         });
                     }
+
+                    ScrollMessagesToBottom();
                 }
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Ошибка загрузки сообщений: {ex.Message}", "Ошибка");
+            }
+        }
+
+        private void ScrollMessagesToBottom()
+        {
+            if (MessagesList.Items.Count > 0)
+            {
+                var lastItem = MessagesList.Items[MessagesList.Items.Count - 1];
+                MessagesList.ScrollIntoView(lastItem);
             }
         }
 
@@ -93,4 +104,6 @@ namespace JustHangingAround.Client
             }
         }
     }
+
+
 }
