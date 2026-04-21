@@ -6,7 +6,7 @@ namespace JustHangingAround.Repositories
     {
         private readonly List<ChatMessage> _messages = new();
 
-        public void Add(ChatMessage message)
+        public Task AddAsync(ChatMessage message)
         {
             if (message.CreatedAt == default)
             {
@@ -14,11 +14,12 @@ namespace JustHangingAround.Repositories
             }
 
             _messages.Add(message);
+            return Task.CompletedTask;
         }
 
-        public List<ChatMessage> GetAll()
+        public Task<List<ChatMessage>> GetAllAsync()
         {
-            return _messages;
+            return Task.FromResult(_messages.ToList());
         }
     }
 }

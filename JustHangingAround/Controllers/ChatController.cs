@@ -15,12 +15,10 @@ namespace JustHangingAround.Controllers
             _chatRepository = chatRepository;
         }
 
-
         [HttpPost("send")]
-        public IActionResult Send([FromBody] SendMessageRequest request)
+        public async Task<IActionResult> Send([FromBody] SendMessageRequest request)
         {
-            if (string.IsNullOrWhiteSpace(request.Username) ||
-                string.IsNullOrWhiteSpace(request.Text))
+            if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Text))
             {
                 return BadRequest("Пустые данные");
             }
@@ -32,15 +30,15 @@ namespace JustHangingAround.Controllers
                 CreatedAt = DateTime.Now
             };
 
-            _chatRepository.Add(message);
+            await _chatRepository.AddAsync(message);
 
             return Ok(message);
         }
 
         [HttpGet("history")]
-        public IActionResult GetHistory()
+        public async Task<IActionResult> GetHistory()
         {
-            var messages = _chatRepository.GetAll();
+            var messages = await _chatRepository.GetAllAsync();
             return Ok(messages);
         }
     }

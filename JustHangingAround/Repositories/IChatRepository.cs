@@ -4,7 +4,7 @@ namespace JustHangingAround.Repositories
 {
     public interface IChatRepository
     {
-        void Add(ChatMessage message);
-        List<ChatMessage> GetAll();
+        Task AddAsync(ChatMessage message);
+        Task<List<ChatMessage>> GetAllAsync();
     }
 }
