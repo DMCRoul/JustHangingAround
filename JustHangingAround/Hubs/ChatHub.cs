@@ -15,6 +15,17 @@ namespace JustHangingAround.Hubs
 
         public async Task SendMessage(ChatMessage message)
         {
+            if (string.IsNullOrWhiteSpace(message.Username) ||
+                string.IsNullOrWhiteSpace(message.Text))
+            {
+                return;
+            }
+
+            if (message.CreatedAt == default)
+            {
+                message.CreatedAt = DateTime.Now;
+            }
+
             _chatRepository.Add(message);
 
             await Clients.All.SendAsync("ReceiveMessage", message);

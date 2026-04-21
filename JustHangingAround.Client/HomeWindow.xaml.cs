@@ -106,29 +106,22 @@ namespace JustHangingAround.Client
                 return;
             }
 
-            var request = new SendMessageRequest
+            var message = new ChatMessage
             {
                 Username = _username,
-                Text = MessageInput.Text
+                Text = MessageInput.Text,
+                CreatedAt = DateTime.Now
             };
 
             try
             {
-                var result = await _apiClient.PostAsync("Chat/send", request);
+                await _connection.InvokeAsync("SendMessage", message);
 
-                if (result.IsSuccess)
-                {
-                    MessageInput.Clear();
-                    await LoadMessagesAsync();
-                }
-                else
-                {
-                    MessageBox.Show(result.ResponseText, "Ошибка");
-                }
+                MessageInput.Clear();
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Сбой подключения: {ex.Message}", "Ошибка");
+                MessageBox.Show($"Ошибка отправки: {ex.Message}", "Ошибка");
             }
         }
     }
