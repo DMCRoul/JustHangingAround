@@ -19,8 +19,7 @@ namespace JustHangingAround.Controllers
 
         // Запасной HTTP-endpoint для отправки сообщения.
         // WPF-клиент сейчас отправляет сообщения через SignalR,
-        // чтобы новые сообщения сразу приходили всем подключённым клиентам.
-
+        // чтобы сообщения сразу приходили всем подключённым клиентам.
         [HttpPost("send")]
         public async Task<IActionResult> Send([FromBody] SendMessageRequest request)
         {
@@ -46,6 +45,21 @@ namespace JustHangingAround.Controllers
             await _chatRepository.AddAsync(message);
 
             return Ok(message);
+        }
+
+        [HttpGet("conversation/{username}")]
+        public async Task<IActionResult> GetConversation(string username)
+        {
+            var currentUser = User.Identity?.Name;
+
+            if (string.IsNullOrWhiteSpace(currentUser))
+            {
+                return Unauthorized();
+            }
+
+            var messages = await _chatRepository.GetConversationAsync(currentUser, username);
+
+            return Ok(messages);
         }
 
         [HttpGet("history")]

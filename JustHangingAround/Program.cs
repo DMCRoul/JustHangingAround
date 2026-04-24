@@ -3,6 +3,7 @@ using JustHangingAround.Data;
 using JustHangingAround.Hubs;
 using JustHangingAround.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -56,7 +57,13 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
-builder.Services.AddSignalR();
+builder.Services.AddSignalR(options =>
+{
+    options.EnableDetailedErrors = true;
+});
+
+builder.Services.AddSingleton<IUserIdProvider, NameUserIdProvider>();
+
 
 var app = builder.Build();
 
@@ -75,3 +82,5 @@ app.MapControllers();
 app.MapHub<ChatHub>("/chatHub");
 
 app.Run();
+
+

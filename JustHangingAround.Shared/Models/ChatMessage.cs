@@ -1,9 +1,8 @@
-﻿namespace JustHangingAround.Shared.Models
+﻿public class ChatMessage
 {
-    public class ChatMessage
-    {
-        public string Username { get; set; } = "";
-        public string Text { get; set; } = "";
-        public DateTime CreatedAt { get; set; }
-    }
+    public string Username { get; set; } = string.Empty; // кто отправил
+    public string Recipient { get; set; } = string.Empty; // кому
+    public string Text { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+
 }

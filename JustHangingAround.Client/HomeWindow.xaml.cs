@@ -16,7 +16,7 @@ namespace JustHangingAround.Client
         private readonly string _token;
         private readonly ApiClient _apiClient = new ApiClient();
         private HubConnection _connection;
-
+        private string? _selectedUser;
         public ObservableCollection<ChatMessageViewModel> Messages { get; } = new();
 
         public HomeWindow()
@@ -39,6 +39,19 @@ namespace JustHangingAround.Client
             MessagesList.ItemsSource = Messages;
 
             Loaded += HomeWindow_Loaded;
+        }
+
+        private void HandleUnauthorized()
+        {
+            MessageBox.Show("Сессия истекла. Войдите снова.", "Авторизация");
+
+            UserSession.Clear();
+
+            var mainWindow = new MainWindow();
+            mainWindow.Show();
+
+            Application.Current.MainWindow = mainWindow;
+            Close();
         }
         private async void Logout_Click(object sender, RoutedEventArgs e)
         {
@@ -65,7 +78,7 @@ namespace JustHangingAround.Client
         }
         private async void HomeWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            await LoadMessagesAsync();
+            await LoadUsersAsync();
             await InitializeSignalR();
         }
 
@@ -73,20 +86,18 @@ namespace JustHangingAround.Client
         {
             try
             {
-                var messages = await _apiClient.GetAsync<List<ChatMessage>>("Chat/history");
+                if (string.IsNullOrWhiteSpace(_selectedUser))
+                {
+                    Messages.Clear();
+                    return;
+                }
+
+                var messages = await _apiClient.GetAsync<List<ChatMessage>>(
+                    $"Chat/conversation/{_selectedUser}");
 
                 if (_apiClient.LastRequestWasUnauthorized)
                 {
-                    MessageBox.Show("Сессия истекла. Войдите снова.", "Авторизация");
-
-                    UserSession.Clear();
-
-                    var mainWindow = new MainWindow();
-                    mainWindow.Show();
-
-                    Application.Current.MainWindow = mainWindow;
-                    Close();
-
+                    HandleUnauthorized();
                     return;
                 }
 
@@ -112,7 +123,6 @@ namespace JustHangingAround.Client
                 MessageBox.Show($"Ошибка загрузки сообщений: {ex.Message}", "Ошибка");
             }
         }
-
         private void ScrollMessagesToBottom()
         {
             if (MessagesList.Items.Count > 0)
@@ -121,7 +131,6 @@ namespace JustHangingAround.Client
                 MessagesList.ScrollIntoView(lastItem);
             }
         }
-
         private async Task InitializeSignalR()
         {
             _connection = new HubConnectionBuilder()
@@ -136,6 +145,20 @@ namespace JustHangingAround.Client
             {
                 Dispatcher.Invoke(() =>
                 {
+                    if (string.IsNullOrWhiteSpace(_selectedUser))
+                    {
+                        return;
+                    }
+
+                    var belongsToSelectedDialog =
+                        (message.Username == _username && message.Recipient == _selectedUser) ||
+                        (message.Username == _selectedUser && message.Recipient == _username);
+
+                    if (!belongsToSelectedDialog)
+                    {
+                        return;
+                    }
+
                     Messages.Add(new ChatMessageViewModel
                     {
                         Username = message.Username,
@@ -149,7 +172,6 @@ namespace JustHangingAround.Client
 
             await _connection.StartAsync();
         }
-
         private async void Send_Click(object sender, RoutedEventArgs e)
         {
             if (string.IsNullOrWhiteSpace(MessageInput.Text))
@@ -160,14 +182,50 @@ namespace JustHangingAround.Client
 
             var text = MessageInput.Text;
 
+            if (string.IsNullOrWhiteSpace(_selectedUser))
+            {
+                MessageBox.Show("Выберите пользователя", "Ошибка");
+                return;
+            }
+
+            var recipient = _selectedUser;
             try
             {
-                await _connection.InvokeAsync("SendMessage", text);
+                await _connection.InvokeAsync("SendMessage", recipient, text);
                 MessageInput.Clear();
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Ошибка отправки: {ex.Message}", "Ошибка");
+            }
+        }
+        private async void UsersList_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            if (UsersList.SelectedItem is not string selectedUser)
+            {
+                return;
+            }
+
+            _selectedUser = selectedUser;
+            await LoadMessagesAsync();
+        }
+        private async Task LoadUsersAsync()
+        {
+            try
+            {
+                var users = await _apiClient.GetAsync<List<string>>("Users");
+
+                if (_apiClient.LastRequestWasUnauthorized)
+                {
+                    HandleUnauthorized();
+                    return;
+                }
+
+                UsersList.ItemsSource = users;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка загрузки пользователей: {ex.Message}", "Ошибка");
             }
         }
     }

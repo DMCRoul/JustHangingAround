@@ -3,82 +3,97 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="JustHangingAround"
         Height="420"
-        Width="500"
+        Width="650"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize">
+
     <Grid Margin="20">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="150"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
 
-        <Button
-    Content="Выйти"
-    Click="Logout_Click"
-    Width="80"
-    Margin="10,0,0,0" />
-        
-        <TextBlock x:Name="WelcomeText"
-                   FontSize="18"
-                   FontWeight="Bold"
-                   Margin="0,0,0,15"/>
+        <ListBox x:Name="UsersList"
+                 Grid.Column="0"
+                 Margin="0,0,15,0"
+                 SelectionChanged="UsersList_SelectionChanged"/>
 
-        <ListBox x:Name="MessagesList"
-         Grid.Row="1"
-         Margin="0,0,0,10"
-         BorderThickness="0"
-         Background="Transparent">
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
 
-            <!-- 👇 ВОТ ЭТО ДОБАВЛЕНО -->
-            <ListBox.ItemContainerStyle>
-                <Style TargetType="ListBoxItem">
-                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                    <Setter Property="BorderThickness" Value="0"/>
-                    <Setter Property="Padding" Value="0"/>
-                </Style>
-            </ListBox.ItemContainerStyle>
+            <StackPanel Grid.Row="0"
+                        Orientation="Horizontal"
+                        Margin="0,0,0,15">
 
-            <ListBox.ItemTemplate>
-                <DataTemplate>
-                    <Border x:Name="MessageBorder"
-                    Padding="10"
-                    Margin="0,0,0,8"
-                    CornerRadius="10"
-                    MaxWidth="300"
-                    Background="#EFEFEF"
-                    HorizontalAlignment="Left">
+                <TextBlock x:Name="WelcomeText"
+                           FontSize="18"
+                           FontWeight="Bold"
+                           VerticalAlignment="Center"/>
 
-                        <StackPanel>
-                            <TextBlock Text="{Binding Username}"
-                               FontWeight="Bold"
-                               Margin="0,0,0,4"/>
+                <Button Content="Выйти"
+                        Click="Logout_Click"
+                        Width="80"
+                        Margin="20,0,0,0"/>
+            </StackPanel>
 
-                            <TextBlock Text="{Binding Text}"
-                               TextWrapping="Wrap"/>
-                        </StackPanel>
-                    </Border>
+            <ListBox x:Name="MessagesList"
+                     Grid.Row="1"
+                     Margin="0,0,0,10"
+                     BorderThickness="0"
+                     Background="Transparent">
 
-                    <DataTemplate.Triggers>
-                        <DataTrigger Binding="{Binding IsOwnMessage}" Value="True">
-                            <Setter TargetName="MessageBorder" Property="Background" Value="#DCF8C6"/>
-                            <Setter TargetName="MessageBorder" Property="HorizontalAlignment" Value="Right"/>
-                        </DataTrigger>
-                    </DataTemplate.Triggers>
-                </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
-        
-        
-        <TextBox x:Name="MessageInput"
-                 Grid.Row="2"
-                 Height="32"
-                 Margin="0,0,0,10"/>
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Setter Property="Padding" Value="0"/>
+                    </Style>
+                </ListBox.ItemContainerStyle>
 
-        <Button Grid.Row="3"
-                Content="Отправить"
-                Height="36"
-                Click="Send_Click"/>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Border x:Name="MessageBorder"
+                                Padding="10"
+                                Margin="0,0,0,8"
+                                CornerRadius="10"
+                                MaxWidth="300"
+                                Background="#EFEFEF"
+                                HorizontalAlignment="Left">
+
+                            <StackPanel>
+                                <TextBlock Text="{Binding Username}"
+                                           FontWeight="Bold"
+                                           Margin="0,0,0,4"/>
+
+                                <TextBlock Text="{Binding Text}"
+                                           TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
+
+                        <DataTemplate.Triggers>
+                            <DataTrigger Binding="{Binding IsOwnMessage}" Value="True">
+                                <Setter TargetName="MessageBorder" Property="Background" Value="#DCF8C6"/>
+                                <Setter TargetName="MessageBorder" Property="HorizontalAlignment" Value="Right"/>
+                            </DataTrigger>
+                        </DataTemplate.Triggers>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <TextBox x:Name="MessageInput"
+                     Grid.Row="2"
+                     Height="32"
+                     Margin="0,0,0,10"/>
+
+            <Button Grid.Row="3"
+                    Content="Отправить"
+                    Height="36"
+                    Click="Send_Click"/>
+        </Grid>
     </Grid>
 </Window>

@@ -15,24 +15,29 @@ namespace JustHangingAround.Hubs
             _chatRepository = chatRepository;
         }
 
-        public async Task SendMessage(string text)
+        public async Task SendMessage(string recipient, string text)
         {
-            var username = Context.User?.Identity?.Name;
+            var sender = Context.User?.Identity?.Name;
 
-            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(text))
+            if (string.IsNullOrWhiteSpace(sender) ||
+                string.IsNullOrWhiteSpace(recipient) ||
+                string.IsNullOrWhiteSpace(text))
             {
                 return;
             }
 
             var message = new ChatMessage
             {
-                Username = username,
+                Username = sender,
+                Recipient = recipient,
                 Text = text,
                 CreatedAt = DateTime.Now
             };
 
             await _chatRepository.AddAsync(message);
-            await Clients.All.SendAsync("ReceiveMessage", message);
+
+            await Clients.User(recipient).SendAsync("ReceiveMessage", message);
+            await Clients.User(sender).SendAsync("ReceiveMessage", message);
         }
     }
 }

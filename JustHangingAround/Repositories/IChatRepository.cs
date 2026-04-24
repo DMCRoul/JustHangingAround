@@ -6,5 +6,6 @@ namespace JustHangingAround.Repositories
     {
         Task AddAsync(ChatMessage message);
         Task<List<ChatMessage>> GetAllAsync();
+        Task<List<ChatMessage>> GetConversationAsync(string user1, string user2);
     }
 }
