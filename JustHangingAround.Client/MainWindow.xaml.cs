@@ -51,11 +51,13 @@ namespace JustHangingAround.Client
 
             try
             {
-                var result = await _apiClient.PostAsync("Auth/login", request);
+                var loginResponse = await _apiClient.LoginAsync(request);
 
-                if (result.IsSuccess)
+                if (loginResponse is not null && !string.IsNullOrWhiteSpace(loginResponse.Token))
                 {
-                    var homeWindow = new HomeWindow(request.Username);
+                    UserSession.Set(loginResponse.Username, loginResponse.Token);
+
+                    var homeWindow = new HomeWindow();
                     homeWindow.Show();
 
                     Application.Current.MainWindow = homeWindow;
@@ -63,7 +65,7 @@ namespace JustHangingAround.Client
                 }
                 else
                 {
-                    StatusText.Text = $"Ошибка: {result.ResponseText}";
+                    StatusText.Text = "Ошибка: неверный логин или пароль";
                 }
             }
             catch (Exception ex)

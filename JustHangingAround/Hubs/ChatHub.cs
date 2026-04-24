@@ -1,9 +1,11 @@
 ﻿using JustHangingAround.Repositories;
 using JustHangingAround.Shared.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
 namespace JustHangingAround.Hubs
 {
+    [Authorize]
     public class ChatHub : Hub
     {
         private readonly IChatRepository _chatRepository;
@@ -13,17 +15,21 @@ namespace JustHangingAround.Hubs
             _chatRepository = chatRepository;
         }
 
-        public async Task SendMessage(ChatMessage message)
+        public async Task SendMessage(string text)
         {
-            if (string.IsNullOrWhiteSpace(message.Username) || string.IsNullOrWhiteSpace(message.Text))
+            var username = Context.User?.Identity?.Name;
+
+            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(text))
             {
                 return;
             }
 
-            if (message.CreatedAt == default)
+            var message = new ChatMessage
             {
-                message.CreatedAt = DateTime.Now;
-            }
+                Username = username,
+                Text = text,
+                CreatedAt = DateTime.Now
+            };
 
             await _chatRepository.AddAsync(message);
             await Clients.All.SendAsync("ReceiveMessage", message);

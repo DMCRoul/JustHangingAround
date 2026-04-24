@@ -13,22 +13,56 @@ namespace JustHangingAround.Client
     public partial class HomeWindow : Window
     {
         private readonly string _username;
+        private readonly string _token;
         private readonly ApiClient _apiClient = new ApiClient();
         private HubConnection _connection;
 
         public ObservableCollection<ChatMessageViewModel> Messages { get; } = new();
 
-        public HomeWindow(string username)
+        public HomeWindow()
         {
             InitializeComponent();
 
-            _username = username;
+            if (!UserSession.IsAuthenticated)
+            {
+                MessageBox.Show("Сессия не найдена. Войдите снова.", "Ошибка");
+                Close();
+                return;
+            }
+
+            _username = UserSession.Username!;
+            _token = UserSession.Token!;
+
+            _apiClient.SetToken(_token);
+
             WelcomeText.Text = $"Вы вошли как: {_username}";
             MessagesList.ItemsSource = Messages;
 
             Loaded += HomeWindow_Loaded;
         }
+        private async void Logout_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (_connection != null)
+                {
+                    await _connection.StopAsync();
+                    await _connection.DisposeAsync();
+                }
 
+                UserSession.Clear();
+
+                var mainWindow = new MainWindow();
+                mainWindow.Show();
+
+                Application.Current.MainWindow = mainWindow;
+                Close();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка выхода: {ex.Message}", "Ошибка");
+            }
+        }
         private async void HomeWindow_Loaded(object sender, RoutedEventArgs e)
         {
             await LoadMessagesAsync();
@@ -40,6 +74,21 @@ namespace JustHangingAround.Client
             try
             {
                 var messages = await _apiClient.GetAsync<List<ChatMessage>>("Chat/history");
+
+                if (_apiClient.LastRequestWasUnauthorized)
+                {
+                    MessageBox.Show("Сессия истекла. Войдите снова.", "Авторизация");
+
+                    UserSession.Clear();
+
+                    var mainWindow = new MainWindow();
+                    mainWindow.Show();
+
+                    Application.Current.MainWindow = mainWindow;
+                    Close();
+
+                    return;
+                }
 
                 Messages.Clear();
 
@@ -76,7 +125,10 @@ namespace JustHangingAround.Client
         private async Task InitializeSignalR()
         {
             _connection = new HubConnectionBuilder()
-                .WithUrl("https://localhost:7137/chatHub")
+                .WithUrl("https://localhost:7137/chatHub", options =>
+                {
+                    options.AccessTokenProvider = () => Task.FromResult(_token);
+                })
                 .WithAutomaticReconnect()
                 .Build();
 
@@ -106,17 +158,11 @@ namespace JustHangingAround.Client
                 return;
             }
 
-            var message = new ChatMessage
-            {
-                Username = _username,
-                Text = MessageInput.Text,
-                CreatedAt = DateTime.Now
-            };
+            var text = MessageInput.Text;
 
             try
             {
-                await _connection.InvokeAsync("SendMessage", message);
-
+                await _connection.InvokeAsync("SendMessage", text);
                 MessageInput.Clear();
             }
             catch (Exception ex)
