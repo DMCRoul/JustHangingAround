@@ -11,6 +11,7 @@ using JustHangingAround.Client.ViewModels;
 using JustHangingAround.Shared.Models;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Win32;
+using System.Diagnostics;
 
 namespace JustHangingAround.Client
 {
@@ -391,6 +392,41 @@ namespace JustHangingAround.Client
 
             window.ShowDialog();
         }
+
+        private void AttachmentFile_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not FrameworkElement element)
+            {
+                return;
+            }
+
+            if (element.DataContext is not ChatMessageViewModel message)
+            {
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(message.AttachmentUrl))
+            {
+                return;
+            }
+
+            try
+            {
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = message.AttachmentUrl,
+                    UseShellExecute = true
+                };
+
+                Process.Start(startInfo);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Не удалось открыть файл: {ex.Message}", "Ошибка");
+            }
+        }
+
+
         private async Task LoadUsersAsync()
         {
             try

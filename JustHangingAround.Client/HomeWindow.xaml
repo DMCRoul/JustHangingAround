@@ -13,6 +13,7 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
+        <!-- Список пользователей -->
         <ListBox x:Name="UsersList"
                  Grid.Column="0"
                  Margin="0,0,15,0"
@@ -26,6 +27,7 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
+            <!-- Верх -->
             <StackPanel Grid.Row="0"
                         Orientation="Horizontal"
                         Margin="0,0,0,15">
@@ -41,6 +43,7 @@
                         Margin="20,0,0,0"/>
             </StackPanel>
 
+            <!-- Сообщения -->
             <ListBox x:Name="MessagesList"
                      Grid.Row="1"
                      Margin="0,0,0,10"
@@ -66,20 +69,23 @@
                                 HorizontalAlignment="Left">
 
                             <StackPanel>
+
+                                <!-- Username -->
                                 <TextBlock Text="{Binding Username}"
-               FontWeight="Bold"
-               Margin="0,0,0,4"/>
+                                           FontWeight="Bold"
+                                           Margin="0,0,0,4"/>
 
+                                <!-- Text -->
                                 <TextBlock Text="{Binding Text}"
-               TextWrapping="Wrap"/>
+                                           TextWrapping="Wrap"/>
 
-                                <!-- КАРТИНКА -->
+                                <!-- Картинка -->
                                 <Image Source="{Binding AttachmentUrl}"
-       MaxHeight="200"
-       Margin="0,5,0,0"
-       Cursor="Hand"
-       MouseLeftButtonUp="AttachmentImage_Click">
-                                    
+                                       MaxHeight="200"
+                                       Margin="0,5,0,0"
+                                       Cursor="Hand"
+                                       MouseLeftButtonUp="AttachmentImage_Click">
+
                                     <Image.Style>
                                         <Style TargetType="Image">
                                             <Setter Property="Visibility" Value="Collapsed"/>
@@ -91,9 +97,37 @@
                                         </Style>
                                     </Image.Style>
                                 </Image>
+
+                                <!-- Файл -->
+                                <Button Content="{Binding AttachmentFileName}"
+                                        Margin="0,6,0,0"
+                                        Padding="8,4"
+                                        HorizontalAlignment="Left"
+                                        Cursor="Hand"
+                                        Click="AttachmentFile_Click">
+
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+
+                                            <Style.Triggers>
+                                                <MultiDataTrigger>
+                                                    <MultiDataTrigger.Conditions>
+                                                        <Condition Binding="{Binding HasAttachment}" Value="True"/>
+                                                        <Condition Binding="{Binding IsImage}" Value="False"/>
+                                                    </MultiDataTrigger.Conditions>
+
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </MultiDataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+
                             </StackPanel>
                         </Border>
 
+                        <!-- Свои сообщения справа -->
                         <DataTemplate.Triggers>
                             <DataTrigger Binding="{Binding IsOwnMessage}" Value="True">
                                 <Setter TargetName="MessageBorder" Property="Background" Value="#DCF8C6"/>
@@ -104,27 +138,29 @@
                 </ListBox.ItemTemplate>
             </ListBox>
 
+            <!-- Ввод -->
             <TextBox x:Name="MessageInput"
                      Grid.Row="2"
                      Height="32"
                      Margin="0,0,0,10"
                      KeyDown="MessageInput_KeyDown"/>
 
-            <StackPanel Grid.Row="3"
-            Orientation="Horizontal">
+            <!-- Кнопки -->
+            <StackPanel Grid.Row="3" Orientation="Horizontal">
 
-                <Button Content="Файл"
-            Height="36"
-            Width="100"
-            Margin="0,0,10,0"
-            Click="SendFile_Click"/>
+                <Button x:Name="SendFileButton"
+                        Content="Файл"
+                        Height="36"
+                        Width="100"
+                        Margin="0,0,10,0"
+                        Click="SendFile_Click"/>
 
                 <Button Content="Отправить"
-            Height="36"
-            Width="120"
-            Click="Send_Click"/>
+                        Height="36"
+                        Width="120"
+                        Click="Send_Click"/>
             </StackPanel>
-            
+
         </Grid>
     </Grid>
 </Window>

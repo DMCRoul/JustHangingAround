@@ -23,7 +23,11 @@ namespace JustHangingAround.Repositories
                     Username = m.Username,
                     Recipient = m.Recipient,
                     Text = m.Text,
-                    CreatedAt = m.CreatedAt
+                    CreatedAt = m.CreatedAt,
+                    AttachmentUrl = m.AttachmentUrl,
+                    AttachmentFileName = m.AttachmentFileName,
+                    AttachmentContentType = m.AttachmentContentType,
+                    AttachmentSize = m.AttachmentSize
                 })
                 .ToListAsync();
         }
@@ -35,7 +39,11 @@ namespace JustHangingAround.Repositories
                 Username = message.Username,
                 Recipient = message.Recipient,
                 Text = message.Text,
-                CreatedAt = message.CreatedAt
+                CreatedAt = message.CreatedAt,
+                AttachmentUrl = message.AttachmentUrl,
+                AttachmentFileName = message.AttachmentFileName,
+                AttachmentContentType = message.AttachmentContentType,
+                AttachmentSize = message.AttachmentSize
             };
 
             _context.Messages.Add(entity);
@@ -54,7 +62,11 @@ namespace JustHangingAround.Repositories
                     Username = m.Username,
                     Recipient = m.Recipient,
                     Text = m.Text,
-                    CreatedAt = m.CreatedAt
+                    CreatedAt = m.CreatedAt,
+                    AttachmentUrl = m.AttachmentUrl,
+                    AttachmentFileName = m.AttachmentFileName,
+                    AttachmentContentType = m.AttachmentContentType,
+                    AttachmentSize = m.AttachmentSize
                 })
                 .ToListAsync();
         }
