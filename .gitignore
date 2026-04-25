@@ -28,3 +28,8 @@ JustHangingAround/wwwroot/uploads/
 
 # (опционально) временные файлы
 *.tmp
+
+# SQLite
+*.db
+*.db-shm
+*.db-wal
