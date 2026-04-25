@@ -12,6 +12,13 @@ using JustHangingAround.Shared.Models;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Win32;
 using System.Diagnostics;
+using System.IO;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using WinForms = System.Windows.Forms;
+using Drawing = System.Drawing;
+using Imaging = System.Drawing.Imaging;
+using System.Windows.Controls;
 
 namespace JustHangingAround.Client
 {
@@ -138,11 +145,42 @@ namespace JustHangingAround.Client
 
         private void ScrollMessagesToBottom()
         {
-            if (MessagesList.Items.Count > 0)
+            MessagesList.Dispatcher.InvokeAsync(() =>
             {
-                var lastItem = MessagesList.Items[MessagesList.Items.Count - 1];
-                MessagesList.ScrollIntoView(lastItem);
+                var scrollViewer = FindChild<ScrollViewer>(MessagesList);
+
+                if (scrollViewer != null)
+                {
+                    scrollViewer.ScrollToEnd();
+                }
+            }, System.Windows.Threading.DispatcherPriority.Background);
+        }
+
+        private static T? FindChild<T>(DependencyObject parent) where T : DependencyObject
+        {
+            if (parent == null)
+            {
+                return null;
             }
+
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+
+                if (child is T typedChild)
+                {
+                    return typedChild;
+                }
+
+                var result = FindChild<T>(child);
+
+                if (result != null)
+                {
+                    return result;
+                }
+            }
+
+            return null;
         }
 
         private async Task InitializeSignalR()
@@ -340,15 +378,27 @@ namespace JustHangingAround.Client
 
         private async void MessageInput_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key != Key.Enter)
+            // Enter — отправка сообщения
+            if (e.Key == Key.Enter)
             {
+                e.Handled = true;
+                await SendCurrentMessageAsync();
                 return;
             }
 
-            e.Handled = true;
-            await SendCurrentMessageAsync();
+            // Ctrl + Shift + S — скриншот
+            if (Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift)
+                && e.Key == Key.S)
+            {
+                e.Handled = true;
+                await SendScreenshotAsync();
+                return;
+            }
         }
-
+        private async void SendScreenshot_Click(object sender, RoutedEventArgs e)
+        {
+            await SendScreenshotAsync();
+        }
         private async void UsersList_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
             if (UsersList.SelectedItem is not string selectedUser)
@@ -426,7 +476,48 @@ namespace JustHangingAround.Client
             }
         }
 
+        private string CaptureScreenshot()
+        {
+            var bounds = WinForms.Screen.PrimaryScreen!.Bounds;
 
+            using var bitmap = new Drawing.Bitmap(bounds.Width, bounds.Height);
+            using var graphics = Drawing.Graphics.FromImage(bitmap);
+
+            graphics.CopyFromScreen(
+                bounds.Left,
+                bounds.Top,
+                0,
+                0,
+                bounds.Size);
+
+            var filePath = Path.Combine(
+                Path.GetTempPath(),
+                $"screenshot_{Guid.NewGuid()}.png");
+
+            bitmap.Save(filePath, Imaging.ImageFormat.Png);
+
+            return filePath;
+        }
+
+        private async Task SendScreenshotAsync()
+        {
+            if (string.IsNullOrWhiteSpace(_selectedUser))
+            {
+                MessageBox.Show("Выберите пользователя", "Ошибка");
+                return;
+            }
+
+            try
+            {
+                var filePath = CaptureScreenshot();
+
+                await SendFileAsync(filePath, "[Скриншот]");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка скриншота: {ex.Message}", "Ошибка");
+            }
+        }
         private async Task LoadUsersAsync()
         {
             try

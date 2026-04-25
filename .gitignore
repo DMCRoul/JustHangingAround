@@ -19,3 +19,12 @@ obj/
 # OS files
 .DS_Store
 Thumbs.db
+
+# База данных
+*.db
+
+# Загруженные файлы (чат)
+JustHangingAround/wwwroot/uploads/
+
+# (опционально) временные файлы
+*.tmp
