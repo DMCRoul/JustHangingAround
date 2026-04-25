@@ -18,6 +18,15 @@ namespace JustHangingAround.Client.ViewModels
 
         public string? AttachmentContentType { get; set; }
 
+        public DateTime CreatedAt { get; set; }
+
+        public string Time =>
+    CreatedAt.ToLocalTime().ToString("HH:mm");
+
+        public string Date =>
+            CreatedAt.ToLocalTime().ToString("dd.MM");
+
+
         public bool HasAttachment => !string.IsNullOrWhiteSpace(AttachmentUrl);
 
         public bool IsImage =>

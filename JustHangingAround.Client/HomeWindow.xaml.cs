@@ -127,8 +127,9 @@ namespace JustHangingAround.Client
                             Text = message.Text,
                             IsOwnMessage = message.Username == _username,
                             AttachmentUrl = message.AttachmentUrl != null
-                                ? $"https://localhost:7137{message.AttachmentUrl}"
-                                : null,
+                            ? $"https://localhost:7137{message.AttachmentUrl}"
+                            : null,
+                            CreatedAt = message.CreatedAt,
                             AttachmentFileName = message.AttachmentFileName,
                             AttachmentContentType = message.AttachmentContentType
                         });
@@ -219,6 +220,7 @@ namespace JustHangingAround.Client
                         AttachmentUrl = message.AttachmentUrl != null
                             ? $"https://localhost:7137{message.AttachmentUrl}"
                             : null,
+                        CreatedAt = message.CreatedAt,
                         AttachmentFileName = message.AttachmentFileName,
                         AttachmentContentType = message.AttachmentContentType
                     });
