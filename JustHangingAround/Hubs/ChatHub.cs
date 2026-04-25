@@ -39,5 +39,21 @@ namespace JustHangingAround.Hubs
             await Clients.User(recipient).SendAsync("ReceiveMessage", message);
             await Clients.User(sender).SendAsync("ReceiveMessage", message);
         }
+
+        public async Task NotifyAttachmentSent(ChatMessage message)
+        {
+            var sender = Context.User?.Identity?.Name;
+
+            if (string.IsNullOrWhiteSpace(sender) ||
+                message == null ||
+                message.Username != sender ||
+                string.IsNullOrWhiteSpace(message.Recipient))
+            {
+                return;
+            }
+
+            await Clients.User(message.Recipient).SendAsync("ReceiveMessage", message);
+            await Clients.User(sender).SendAsync("ReceiveMessage", message);
+        }
     }
 }
