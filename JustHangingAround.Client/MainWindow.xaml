@@ -6,7 +6,8 @@
         Width="420"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize"
-        Background="#F3F4F6">
+        Background="#F3F4F6"
+        ShowInTaskbar="False">
 
     <Window.Resources>
         <Style x:Key="PrimaryButtonStyle" TargetType="Button">

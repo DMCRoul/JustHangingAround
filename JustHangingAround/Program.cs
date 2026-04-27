@@ -9,6 +9,8 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.WebHost.UseUrls("http://0.0.0.0:5000");
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -64,16 +66,14 @@ builder.Services.AddSignalR(options =>
 
 builder.Services.AddSingleton<IUserIdProvider, NameUserIdProvider>();
 
-
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+app.UseSwagger();
+app.UseSwaggerUI();
 
-app.UseHttpsRedirection();
+// Временно выключаем HTTPS redirect для запуска по IP.
+// Позже, когда будет домен + nginx + HTTPS, вернём.
+// app.UseHttpsRedirection();
 
 app.UseStaticFiles();
 
@@ -83,6 +83,10 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<ChatHub>("/chatHub");
 
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.EnsureCreated();
+}
+
 app.Run();
-
-

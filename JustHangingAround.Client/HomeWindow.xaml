@@ -6,7 +6,9 @@
         Width="860"
         WindowStartupLocation="CenterScreen"
         ResizeMode="CanResize"
-        Background="#F3F4F6">
+        Background="#F3F4F6"
+        ShowInTaskbar="False">
+    
 
     <Window.Resources>
 
@@ -101,11 +103,21 @@
                         Margin="0,3,0,0"/>
                     </StackPanel>
 
-                    <Button Grid.Column="1"
-                            Content="Выйти"
-                            Width="86"
-                            Style="{StaticResource SecondaryButtonStyle}"
-                            Click="Logout_Click"/>
+                    <StackPanel Grid.Column="1"
+            Orientation="Horizontal">
+
+                        <Button x:Name="TopmostButton"
+            Content="📌"
+            Width="38"
+            Margin="0,0,10,0"
+            Style="{StaticResource SecondaryButtonStyle}"
+            Click="Topmost_Click"/>
+
+                        <Button Content="Выйти"
+            Width="86"
+            Style="{StaticResource SecondaryButtonStyle}"
+            Click="Logout_Click"/>
+                    </StackPanel>
                 </Grid>
 
                 <!-- Сообщения -->

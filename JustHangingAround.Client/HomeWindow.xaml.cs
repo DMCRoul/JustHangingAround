@@ -32,6 +32,7 @@ namespace JustHangingAround.Client
         private readonly ApiClient _apiClient = new ApiClient();
         private HubConnection _connection;
         private string? _selectedUser;
+        private bool _isTopmostEnabled;
 
         public ObservableCollection<ChatMessageViewModel> Messages { get; } = new();
 
@@ -45,6 +46,19 @@ namespace JustHangingAround.Client
         {
             InitializeComponent();
 
+            _isTopmostEnabled = true;
+            Topmost = true;
+
+            Loaded += (s, e) =>
+            {
+                TopmostButton.Content = "📍";
+            };
+
+            Closing += (s, e) =>
+            {
+                e.Cancel = true;
+                Hide();
+            };
 
             ProtectWindow(this);
 
@@ -77,6 +91,15 @@ namespace JustHangingAround.Client
             }
 
             CurrentDialogText.Text = $"Диалог с: {_selectedUser}";
+        }
+
+        private void Topmost_Click(object sender, RoutedEventArgs e)
+        {
+            _isTopmostEnabled = !_isTopmostEnabled;
+
+            Topmost = _isTopmostEnabled;
+
+            TopmostButton.Content = _isTopmostEnabled ? "📍" : "📌";
         }
 
         private void HandleUnauthorized()
@@ -173,8 +196,8 @@ namespace JustHangingAround.Client
                             Text = message.Text,
                             IsOwnMessage = message.Username == _username,
                             AttachmentUrl = message.AttachmentUrl != null
-                                ? $"https://localhost:7137{message.AttachmentUrl}"
-                                : null,
+                            ? $"{ServerConfig.BaseUrl}{message.AttachmentUrl}"
+                            : null,
                             CreatedAt = message.CreatedAt,
                             AttachmentFileName = message.AttachmentFileName,
                             AttachmentContentType = message.AttachmentContentType
@@ -221,7 +244,7 @@ namespace JustHangingAround.Client
         private async Task InitializeSignalR()
         {
             _connection = new HubConnectionBuilder()
-                .WithUrl("https://localhost:7137/chatHub", options =>
+                .WithUrl(ServerConfig.ChatHubUrl, options =>
                 {
                     options.AccessTokenProvider = () => Task.FromResult(_token);
                 })
@@ -247,7 +270,7 @@ namespace JustHangingAround.Client
                         Text = message.Text,
                         IsOwnMessage = message.Username == _username,
                         AttachmentUrl = message.AttachmentUrl != null
-                            ? $"https://localhost:7137{message.AttachmentUrl}"
+                            ? $"{ServerConfig.BaseUrl}{message.AttachmentUrl}"
                             : null,
                         CreatedAt = message.CreatedAt,
                         AttachmentFileName = message.AttachmentFileName,
@@ -337,30 +360,81 @@ namespace JustHangingAround.Client
 
         private async Task SendFileAsync(string filePath, string? text)
         {
-            using var client = new HttpClient();
-            client.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", _token);
+            if (string.IsNullOrWhiteSpace(_selectedUser))
+            {
+                MessageBox.Show("Выберите пользователя", "Ошибка");
+                return;
+            }
 
-            await using var stream = File.OpenRead(filePath);
-            using var content = new StreamContent(stream);
+            try
+            {
+                using var client = new HttpClient();
+                client.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", _token);
 
-            using var form = new MultipartFormDataContent();
-            form.Add(content, "file", Path.GetFileName(filePath));
-            form.Add(new StringContent(_selectedUser!), "recipient");
+                await using var stream = File.OpenRead(filePath);
+                using var content = new StreamContent(stream);
 
-            if (!string.IsNullOrWhiteSpace(text))
-                form.Add(new StringContent(text), "text");
+                content.Headers.ContentType =
+                    new MediaTypeHeaderValue(GetContentType(filePath));
 
-            var response = await client.PostAsync("https://localhost:7137/api/Chat/attachment", form);
+                using var form = new MultipartFormDataContent();
+                form.Add(content, "file", Path.GetFileName(filePath));
+                form.Add(new StringContent(_selectedUser), "recipient");
 
-            var json = await response.Content.ReadAsStringAsync();
+                if (!string.IsNullOrWhiteSpace(text))
+                    form.Add(new StringContent(text), "text");
 
-            var message = System.Text.Json.JsonSerializer.Deserialize<ChatMessage>(json,
-                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                var response = await client.PostAsync(ServerConfig.ApiUrl + "Chat/attachment", form);
 
-            await _connection.InvokeAsync("NotifyAttachmentSent", message);
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    MessageBox.Show($"Ошибка отправки файла: {error}", "Ошибка");
+                    return;
+                }
+
+                var json = await response.Content.ReadAsStringAsync();
+
+                var message = System.Text.Json.JsonSerializer.Deserialize<ChatMessage>(json,
+                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                if (message == null)
+                {
+                    MessageBox.Show("Сервер не вернул сообщение", "Ошибка");
+                    return;
+                }
+
+                await _connection.InvokeAsync("NotifyAttachmentSent", message);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.ToString(), "Ошибка отправки файла");
+            }
         }
 
+        private string GetContentType(string filePath)
+        {
+            var extension = Path.GetExtension(filePath).ToLowerInvariant();
+
+            return extension switch
+            {
+                ".png" => "image/png",
+                ".jpg" => "image/jpeg",
+                ".jpeg" => "image/jpeg",
+                ".gif" => "image/gif",
+                ".bmp" => "image/bmp",
+                ".webp" => "image/webp",
+                ".pdf" => "application/pdf",
+                ".txt" => "text/plain",
+                ".doc" => "application/msword",
+                ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                ".xls" => "application/vnd.ms-excel",
+                ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                ".zip" => "application/zip",
+                _ => "application/octet-stream"
+            };
+        }
         private string CaptureScreenshot()
         {
             var bounds = WinForms.Screen.PrimaryScreen!.Bounds;
@@ -378,10 +452,62 @@ namespace JustHangingAround.Client
 
         private async Task SendScreenshotAsync()
         {
-            var path = CaptureScreenshot();
-            await SendFileAsync(path, "[Скриншот]");
-        }
+            if (string.IsNullOrWhiteSpace(_selectedUser))
+            {
+                MessageBox.Show("Выберите пользователя", "Ошибка");
+                return;
+            }
 
+            string? path = null;
+
+            try
+            {
+                var wasTopmost = Topmost;
+
+                Topmost = false;
+                Hide();
+
+                await Task.Delay(400);
+
+                path = CaptureScreenshot();
+
+                Show();
+                Activate();
+
+                Topmost = wasTopmost;
+
+                if (!File.Exists(path))
+                {
+                    MessageBox.Show("Скриншот не был создан", "Ошибка");
+                    return;
+                }
+
+                await SendFileAsync(path, "[Скриншот]");
+            }
+            catch (Exception ex)
+            {
+                Show();
+                Activate();
+
+                Topmost = _isTopmostEnabled;
+
+                MessageBox.Show(ex.ToString(), "Ошибка скриншота");
+            }
+            finally
+            {
+                if (!string.IsNullOrWhiteSpace(path) && File.Exists(path))
+                {
+                    try
+                    {
+                        File.Delete(path);
+                    }
+                    catch
+                    {
+                        // временный файл можно оставить, если Windows не дала удалить
+                    }
+                }
+            }
+        }
         private void ProtectWindow(Window window)
         {
             window.Loaded += (s, e) =>

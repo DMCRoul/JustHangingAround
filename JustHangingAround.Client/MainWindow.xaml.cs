@@ -19,6 +19,12 @@ namespace JustHangingAround.Client
         {
             InitializeComponent();
 
+            Closing += (s, e) =>
+            {
+                e.Cancel = true;
+                Hide();
+            };
+
             Loaded += (s, e) =>
             {
                 var hwnd = new WindowInteropHelper(this).Handle;
@@ -32,6 +38,7 @@ namespace JustHangingAround.Client
 
         private async void Register_Click(object sender, RoutedEventArgs e)
         {
+
             var request = new RegisterRequest
             {
                 Username = UsernameBox.Text,
@@ -39,26 +46,29 @@ namespace JustHangingAround.Client
             };
 
             try
-            {
-                var result = await _apiClient.PostAsync("Auth/register", request);
+{
+    var result = await _apiClient.PostAsync("Auth/register", request);
 
-                if (result.IsSuccess)
-                {
-                    StatusText.Text = $"Успех: {result.ResponseText}";
-                }
-                else
-                {
-                    StatusText.Text = $"Ошибка: {result.ResponseText}";
-                }
-            }
-            catch (Exception ex)
-            {
-                StatusText.Text = $"Сбой подключения: {ex.Message}";
-            }
+    MessageBox.Show($"Success: {result.IsSuccess}\n{result.ResponseText}");
+
+    if (result.IsSuccess)
+    {
+        StatusText.Text = $"Успех: {result.ResponseText}";
+    }
+    else
+    {
+        StatusText.Text = $"Ошибка: {result.ResponseText}";
+    }
+}
+catch (Exception ex)
+{
+    MessageBox.Show(ex.ToString(), "FULL ERROR");
+}
         }
 
         private async void Login_Click(object sender, RoutedEventArgs e)
         {
+
             var request = new LoginRequest
             {
                 Username = UsernameBox.Text,
