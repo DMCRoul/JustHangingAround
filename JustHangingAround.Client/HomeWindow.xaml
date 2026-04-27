@@ -94,10 +94,11 @@
                                    FontWeight="Bold"
                                    Foreground="#111827"/>
 
-                        <TextBlock Text="Выберите пользователя слева и начните переписку"
-                                   FontSize="12"
-                                   Foreground="#6B7280"
-                                   Margin="0,3,0,0"/>
+                        <TextBlock x:Name="CurrentDialogText"
+                         Text="Выберите пользователя слева и начните переписку"
+                        FontSize="12"
+                        Foreground="#6B7280"
+                        Margin="0,3,0,0"/>
                     </StackPanel>
 
                     <Button Grid.Column="1"

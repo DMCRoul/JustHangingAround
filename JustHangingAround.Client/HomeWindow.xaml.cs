@@ -19,21 +19,34 @@ using WinForms = System.Windows.Forms;
 using Drawing = System.Drawing;
 using Imaging = System.Drawing.Imaging;
 using System.Windows.Controls;
+using System.Windows.Interop;
+using System.Runtime.InteropServices;
 
 namespace JustHangingAround.Client
 {
     public partial class HomeWindow : Window
     {
+
         private readonly string _username;
         private readonly string _token;
         private readonly ApiClient _apiClient = new ApiClient();
         private HubConnection _connection;
         private string? _selectedUser;
+
         public ObservableCollection<ChatMessageViewModel> Messages { get; } = new();
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool SetWindowDisplayAffinity(IntPtr hWnd, uint dwAffinity);
+
+        private const uint WDA_NONE = 0x0;
+        private const uint WDA_EXCLUDEFROMCAPTURE = 0x11;
 
         public HomeWindow()
         {
             InitializeComponent();
+
+
+            ProtectWindow(this);
 
             if (!UserSession.IsAuthenticated)
             {
@@ -50,7 +63,20 @@ namespace JustHangingAround.Client
             WelcomeText.Text = $"Вы вошли как: {_username}";
             MessagesList.ItemsSource = Messages;
 
+            UpdateCurrentDialogHeader();
+
             Loaded += HomeWindow_Loaded;
+        }
+
+        private void UpdateCurrentDialogHeader()
+        {
+            if (string.IsNullOrWhiteSpace(_selectedUser))
+            {
+                CurrentDialogText.Text = "Выберите пользователя слева и начните переписку";
+                return;
+            }
+
+            CurrentDialogText.Text = $"Диалог с: {_selectedUser}";
         }
 
         private void HandleUnauthorized()
@@ -96,6 +122,26 @@ namespace JustHangingAround.Client
             await InitializeSignalR();
         }
 
+        private async Task LoadUsersAsync()
+        {
+            try
+            {
+                var users = await _apiClient.GetAsync<List<string>>("Users");
+
+                if (_apiClient.LastRequestWasUnauthorized)
+                {
+                    HandleUnauthorized();
+                    return;
+                }
+
+                UsersList.ItemsSource = users;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка загрузки пользователей: {ex.Message}", "Ошибка");
+            }
+        }
+
         private async Task LoadMessagesAsync()
         {
             try
@@ -127,8 +173,8 @@ namespace JustHangingAround.Client
                             Text = message.Text,
                             IsOwnMessage = message.Username == _username,
                             AttachmentUrl = message.AttachmentUrl != null
-                            ? $"https://localhost:7137{message.AttachmentUrl}"
-                            : null,
+                                ? $"https://localhost:7137{message.AttachmentUrl}"
+                                : null,
                             CreatedAt = message.CreatedAt,
                             AttachmentFileName = message.AttachmentFileName,
                             AttachmentContentType = message.AttachmentContentType
@@ -149,36 +195,24 @@ namespace JustHangingAround.Client
             MessagesList.Dispatcher.InvokeAsync(() =>
             {
                 var scrollViewer = FindChild<ScrollViewer>(MessagesList);
-
-                if (scrollViewer != null)
-                {
-                    scrollViewer.ScrollToEnd();
-                }
+                scrollViewer?.ScrollToEnd();
             }, System.Windows.Threading.DispatcherPriority.Background);
         }
 
         private static T? FindChild<T>(DependencyObject parent) where T : DependencyObject
         {
-            if (parent == null)
-            {
-                return null;
-            }
+            if (parent == null) return null;
 
             for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
             {
                 var child = VisualTreeHelper.GetChild(parent, i);
 
                 if (child is T typedChild)
-                {
                     return typedChild;
-                }
 
                 var result = FindChild<T>(child);
-
                 if (result != null)
-                {
                     return result;
-                }
             }
 
             return null;
@@ -199,18 +233,13 @@ namespace JustHangingAround.Client
                 Dispatcher.Invoke(() =>
                 {
                     if (string.IsNullOrWhiteSpace(_selectedUser))
-                    {
                         return;
-                    }
 
-                    var belongsToSelectedDialog =
+                    var belongs =
                         (message.Username == _username && message.Recipient == _selectedUser) ||
                         (message.Username == _selectedUser && message.Recipient == _username);
 
-                    if (!belongsToSelectedDialog)
-                    {
-                        return;
-                    }
+                    if (!belongs) return;
 
                     Messages.Add(new ChatMessageViewModel
                     {
@@ -236,124 +265,20 @@ namespace JustHangingAround.Client
         {
             if (string.IsNullOrWhiteSpace(MessageInput.Text))
             {
-                MessageBox.Show("Введите сообщение", "Ошибка");
+                MessageBox.Show("Введите сообщение");
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(_selectedUser))
             {
-                MessageBox.Show("Выберите пользователя", "Ошибка");
+                MessageBox.Show("Выберите пользователя");
                 return;
             }
 
-            var text = MessageInput.Text;
-            var recipient = _selectedUser;
+            await _connection.InvokeAsync("SendMessage", _selectedUser, MessageInput.Text);
 
-            try
-            {
-                await _connection.InvokeAsync("SendMessage", recipient, text);
-                MessageInput.Clear();
-                MessageInput.Focus();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Ошибка отправки: {ex.Message}", "Ошибка");
-            }
-        }
-
-        private string GetContentType(string filePath)
-        {
-            var extension = System.IO.Path.GetExtension(filePath).ToLowerInvariant();
-
-            return extension switch
-            {
-                ".png" => "image/png",
-                ".jpg" => "image/jpeg",
-                ".jpeg" => "image/jpeg",
-                ".gif" => "image/gif",
-                ".bmp" => "image/bmp",
-                ".webp" => "image/webp",
-                ".pdf" => "application/pdf",
-                ".txt" => "text/plain",
-                ".doc" => "application/msword",
-                ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                ".xls" => "application/vnd.ms-excel",
-                ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                ".zip" => "application/zip",
-                _ => "application/octet-stream"
-            };
-        }
-
-        private async Task SendFileAsync(string filePath, string? text)
-        {
-            if (string.IsNullOrWhiteSpace(_selectedUser))
-            {
-                MessageBox.Show("Выберите пользователя", "Ошибка");
-                return;
-            }
-
-            try
-            {
-                using var client = new HttpClient();
-
-                client.DefaultRequestHeaders.Authorization =
-                    new AuthenticationHeaderValue("Bearer", _token);
-
-                await using var fileStream = System.IO.File.OpenRead(filePath);
-
-                using var fileContent = new StreamContent(fileStream);
-
-                fileContent.Headers.ContentType =
-                    new MediaTypeHeaderValue(GetContentType(filePath));
-
-                using var form = new MultipartFormDataContent();
-
-                form.Add(fileContent, "file", System.IO.Path.GetFileName(filePath));
-                form.Add(new StringContent(_selectedUser), "recipient");
-
-                if (!string.IsNullOrWhiteSpace(text))
-                {
-                    form.Add(new StringContent(text), "text");
-                }
-
-                var response = await client.PostAsync(
-                    "https://localhost:7137/api/Chat/attachment",
-                    form);
-
-                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-                {
-                    HandleUnauthorized();
-                    return;
-                }
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    var error = await response.Content.ReadAsStringAsync();
-                    MessageBox.Show($"Ошибка отправки файла: {error}", "Ошибка");
-                    return;
-                }
-
-                var json = await response.Content.ReadAsStringAsync();
-
-                var message = System.Text.Json.JsonSerializer.Deserialize<ChatMessage>(
-                    json,
-                    new System.Text.Json.JsonSerializerOptions
-                    {
-                        PropertyNameCaseInsensitive = true
-                    });
-
-                if (message == null)
-                {
-                    MessageBox.Show("Сервер не вернул сообщение", "Ошибка");
-                    return;
-                }
-
-                await _connection.InvokeAsync("NotifyAttachmentSent", message);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Ошибка отправки файла: {ex.Message}", "Ошибка");
-            }
+            MessageInput.Clear();
+            MessageInput.Focus();
         }
 
         private async void Send_Click(object sender, RoutedEventArgs e)
@@ -361,26 +286,36 @@ namespace JustHangingAround.Client
             await SendCurrentMessageAsync();
         }
 
+        private async void UsersList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (UsersList.SelectedItem is not string selectedUser)
+                return;
+
+            _selectedUser = selectedUser;
+            UpdateCurrentDialogHeader();
+
+            await LoadMessagesAsync();
+        }
+
+
         private async void SendFile_Click(object sender, RoutedEventArgs e)
         {
-            var dialog = new OpenFileDialog
+            var picker = new FilePickerWindow
             {
-                Title = "Выберите файл для отправки"
+                Owner = this
             };
 
-            if (dialog.ShowDialog() != true)
+            if (picker.ShowDialog() != true)
             {
                 return;
             }
 
-            await SendFileAsync(dialog.FileName, MessageInput.Text);
+            await SendFileAsync(picker.SelectedFile!, MessageInput.Text);
             MessageInput.Clear();
-            MessageInput.Focus();
         }
 
         private async void MessageInput_KeyDown(object sender, KeyEventArgs e)
         {
-            // Enter — отправка сообщения
             if (e.Key == Key.Enter)
             {
                 e.Handled = true;
@@ -388,94 +323,42 @@ namespace JustHangingAround.Client
                 return;
             }
 
-            // Ctrl + Shift + S — скриншот
-            if (Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift)
-                && e.Key == Key.S)
+            if (Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift) && e.Key == Key.S)
             {
                 e.Handled = true;
                 await SendScreenshotAsync();
-                return;
             }
         }
+
         private async void SendScreenshot_Click(object sender, RoutedEventArgs e)
         {
             await SendScreenshotAsync();
         }
-        private async void UsersList_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+
+        private async Task SendFileAsync(string filePath, string? text)
         {
-            if (UsersList.SelectedItem is not string selectedUser)
-            {
-                return;
-            }
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.Authorization =
+                new AuthenticationHeaderValue("Bearer", _token);
 
-            _selectedUser = selectedUser;
-            await LoadMessagesAsync();
-        }
-        private void AttachmentImage_Click(object sender, MouseButtonEventArgs e)
-        {
-            if (sender is not System.Windows.Controls.Image image)
-            {
-                return;
-            }
+            await using var stream = File.OpenRead(filePath);
+            using var content = new StreamContent(stream);
 
-            if (image.DataContext is not ChatMessageViewModel message)
-            {
-                return;
-            }
+            using var form = new MultipartFormDataContent();
+            form.Add(content, "file", Path.GetFileName(filePath));
+            form.Add(new StringContent(_selectedUser!), "recipient");
 
-            if (string.IsNullOrWhiteSpace(message.AttachmentUrl))
-            {
-                return;
-            }
+            if (!string.IsNullOrWhiteSpace(text))
+                form.Add(new StringContent(text), "text");
 
-            var window = new Window
-            {
-                Title = message.AttachmentFileName ?? "Изображение",
-                Width = 800,
-                Height = 600,
-                Owner = this,
-                Content = new System.Windows.Controls.Image
-                {
-                    Source = new System.Windows.Media.Imaging.BitmapImage(
-                        new Uri(message.AttachmentUrl)),
-                    Stretch = System.Windows.Media.Stretch.Uniform
-                }
-            };
+            var response = await client.PostAsync("https://localhost:7137/api/Chat/attachment", form);
 
-            window.ShowDialog();
-        }
+            var json = await response.Content.ReadAsStringAsync();
 
-        private void AttachmentFile_Click(object sender, RoutedEventArgs e)
-        {
-            if (sender is not FrameworkElement element)
-            {
-                return;
-            }
+            var message = System.Text.Json.JsonSerializer.Deserialize<ChatMessage>(json,
+                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-            if (element.DataContext is not ChatMessageViewModel message)
-            {
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(message.AttachmentUrl))
-            {
-                return;
-            }
-
-            try
-            {
-                var startInfo = new ProcessStartInfo
-                {
-                    FileName = message.AttachmentUrl,
-                    UseShellExecute = true
-                };
-
-                Process.Start(startInfo);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Не удалось открыть файл: {ex.Message}", "Ошибка");
-            }
+            await _connection.InvokeAsync("NotifyAttachmentSent", message);
         }
 
         private string CaptureScreenshot()
@@ -485,59 +368,64 @@ namespace JustHangingAround.Client
             using var bitmap = new Drawing.Bitmap(bounds.Width, bounds.Height);
             using var graphics = Drawing.Graphics.FromImage(bitmap);
 
-            graphics.CopyFromScreen(
-                bounds.Left,
-                bounds.Top,
-                0,
-                0,
-                bounds.Size);
+            graphics.CopyFromScreen(bounds.Left, bounds.Top, 0, 0, bounds.Size);
 
-            var filePath = Path.Combine(
-                Path.GetTempPath(),
-                $"screenshot_{Guid.NewGuid()}.png");
+            var path = Path.Combine(Path.GetTempPath(), $"screenshot_{Guid.NewGuid()}.png");
+            bitmap.Save(path, Imaging.ImageFormat.Png);
 
-            bitmap.Save(filePath, Imaging.ImageFormat.Png);
-
-            return filePath;
+            return path;
         }
 
         private async Task SendScreenshotAsync()
         {
-            if (string.IsNullOrWhiteSpace(_selectedUser))
-            {
-                MessageBox.Show("Выберите пользователя", "Ошибка");
-                return;
-            }
-
-            try
-            {
-                var filePath = CaptureScreenshot();
-
-                await SendFileAsync(filePath, "[Скриншот]");
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Ошибка скриншота: {ex.Message}", "Ошибка");
-            }
+            var path = CaptureScreenshot();
+            await SendFileAsync(path, "[Скриншот]");
         }
-        private async Task LoadUsersAsync()
+
+        private void ProtectWindow(Window window)
         {
-            try
+            window.Loaded += (s, e) =>
             {
-                var users = await _apiClient.GetAsync<List<string>>("Users");
+                var hwnd = new WindowInteropHelper(window).Handle;
 
-                if (_apiClient.LastRequestWasUnauthorized)
+                if (hwnd != IntPtr.Zero)
                 {
-                    HandleUnauthorized();
-                    return;
+                    SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE);
                 }
+            };
+        }
 
-                UsersList.ItemsSource = users;
-            }
-            catch (Exception ex)
+        private void AttachmentImage_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is not System.Windows.Controls.Image img) return;
+            if (img.DataContext is not ChatMessageViewModel msg) return;
+
+            var w = new Window
             {
-                MessageBox.Show($"Ошибка загрузки пользователей: {ex.Message}", "Ошибка");
-            }
+                Width = 800,
+                Height = 600,
+                Content = new System.Windows.Controls.Image
+                {
+                    Source = new BitmapImage(new Uri(msg.AttachmentUrl)),
+                    Stretch = Stretch.Uniform
+                }
+            };
+
+            ProtectWindow(w);
+
+            w.ShowDialog();
+        }
+
+        private void AttachmentFile_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not FrameworkElement el) return;
+            if (el.DataContext is not ChatMessageViewModel msg) return;
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = msg.AttachmentUrl,
+                UseShellExecute = true
+            });
         }
     }
 }

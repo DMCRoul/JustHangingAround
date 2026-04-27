@@ -2,6 +2,8 @@
 using System.Windows;
 using JustHangingAround.Client.Services;
 using JustHangingAround.Shared.Models;
+using System.Runtime.InteropServices;
+using System.Windows.Interop;
 
 namespace JustHangingAround.Client
 {
@@ -9,9 +11,23 @@ namespace JustHangingAround.Client
     {
         private readonly ApiClient _apiClient = new ApiClient();
 
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool SetWindowDisplayAffinity(IntPtr hWnd, uint dwAffinity);
+
+        private const uint WDA_EXCLUDEFROMCAPTURE = 0x11;
         public MainWindow()
         {
             InitializeComponent();
+
+            Loaded += (s, e) =>
+            {
+                var hwnd = new WindowInteropHelper(this).Handle;
+
+                if (hwnd != IntPtr.Zero)
+                {
+                    SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE);
+                }
+            };
         }
 
         private async void Register_Click(object sender, RoutedEventArgs e)
